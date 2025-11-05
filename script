@@ -1,444 +1,284 @@
--- Services
-local uis = game:GetService("UserInputService")
-local plr = game.Players.LocalPlayer
-local char = plr.Character or plr.CharacterAdded:Wait() -- Initial character setup
-local hrp = char:WaitForChild("HumanoidRootPart")
-local hum = char:WaitForChild("Humanoid")
-
--- Library for adjustable speeds
-local library = {
-    flags = {
-        FlyUpSpeed = 150,     -- Speed at which the player flies up
-        FallSpeed = 80,      -- Speed at which the player falls down
-        FlySpeed = 200,      -- Speed while moving in any direction
-    }
-}
-
-local flying = false
-local velocity = Vector3.new(0, 0, 0)
-
--- Variable to track the current mode
-local currentMode = 1
-local modes = {"FlyUpSpeed", "FallSpeed", "FlySpeed"}
-
--- Function to update flight movement
-local function updateFlying()
-    if flying then
-        -- Check if Space is held to fly up
-        if uis:IsKeyDown(Enum.KeyCode.Space) and not uis:GetFocusedTextBox() then
-            velocity = Vector3.new(0, library.flags["FlyUpSpeed"], 0)
-        else
-            velocity = Vector3.new(0, -library.flags["FallSpeed"], 0)
-        end
-
-        -- Normalize movement direction to apply flying speed
-        if hum.MoveDirection.Magnitude > 0 then
-            velocity += hum.MoveDirection.Unit * library.flags["FlySpeed"]
-        end
-
-        -- Apply the velocity to the HumanoidRootPart
-        hrp.Velocity = velocity
-    end
-end
-
--- Toggle flying on key press (e.g., Z key)
-local function toggleFly(input)
-    if input.KeyCode == Enum.KeyCode.Z then
-        flying = not flying
-        if flying then
-            -- Enable flying movement
-            hrp.Velocity = Vector3.new(0, 0, 0)  -- Stop current velocity
-            notify("Flight", "Flight has been enabled.")
-        else
-            -- Stop flying (return to normal gravity)
-            hrp.Velocity = Vector3.new(0, 0, 0)
-            notify("Flight", "Flight has been disabled.")
-        end
-    end
-end
-
--- Notify function for displaying notifications
-function notify(title, text)
-    game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = title,
-        Text = text,
-        Duration = 2
-    })
-end
-
--- Function to reset flight and player controls after respawn
-local function resetFlightOnRespawn()
-    -- Ensure flight is reset when the character is respawned
-    plr.CharacterAdded:Connect(function(character)
-        -- Wait for the HumanoidRootPart and Humanoid to be available
-        hrp = character:WaitForChild("HumanoidRootPart")
-        hum = character:WaitForChild("Humanoid")
-        
-        -- Reset flight state
-        flying = false
-        velocity = Vector3.new(0, 0, 0)
-        hrp.Velocity = Vector3.new(0, 0, 0)  -- Reset velocity on respawn
-        notify("Flight", "Flight has been reset.")
-    end)
-end
-
--- Connect events
-uis.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end -- Ignore game processed inputs (such as pressing space while typing)
-    
-    toggleFly(input)  -- Check for fly toggle
-end)
-
-game:GetService("RunService").Heartbeat:Connect(updateFlying)
-
--- Reset flight controls after respawn
-resetFlightOnRespawn()
-
--- Toggle fall damage on and off by renaming ApplyFallDamage
-local function toggleFallDamage(input)
-    if input.KeyCode == Enum.KeyCode.N and uis:IsKeyDown(Enum.KeyCode.RightControl) then
-        local applyFallDamageRemote = game.Workspace.Live[plr.Name].CharacterHandler.Remotes:FindFirstChild("ApplyFallDamage")
-        local applyFallDamagRemote = game.Workspace.Live[plr.Name].CharacterHandler.Remotes:FindFirstChild("ApplyFallDamag")
-
-        if applyFallDamageRemote then
-            if applyFallDamageRemote.Name == "ApplyFallDamage" then
-                -- Disable fall damage
-                applyFallDamageRemote.Name = "ApplyFallDamag"
-                notify("Fall Damage", "Fall damage has been disabled.")
-            elseif applyFallDamageRemote.Name == "ApplyFallDamag" then
-                -- Re-enable fall damage
-                applyFallDamageRemote.Name = "ApplyFallDamage"
-                notify("Fall Damage", "Fall damage has been enabled.")
-            end
-        elseif applyFallDamagRemote then
-            if applyFallDamagRemote.Name == "ApplyFallDamag" then
-                -- Re-enable fall damage
-                applyFallDamagRemote.Name = "ApplyFallDamage"
-                notify("Fall Damage", "Fall damage has been enabled.")
-            end
-        else
-            -- If neither ApplyFallDamage nor ApplyFallDamag remote exists
-            notify("Error", "Neither ApplyFallDamage nor ApplyFallDamag remote found!")
-        end
-    end
-end
-
--- Cycle through modes and adjust values
-local function handleKeyPress(input)
-    if input.KeyCode == Enum.KeyCode.P and uis:IsKeyDown(Enum.KeyCode.RightControl) then
-        -- Cycle through modes (FlyUpSpeed, FallSpeed, FlySpeed)
-        currentMode = currentMode % #modes + 1
-
-        -- Notify the user of the current mode
-        notify("Editing: " .. modes[currentMode], "Current value: " .. library.flags[modes[currentMode]])
-    end
-
-    if input.KeyCode == Enum.KeyCode.Equals and uis:IsKeyDown(Enum.KeyCode.RightControl) then
-        -- Increase the value of the current mode
-        library.flags[modes[currentMode]] = library.flags[modes[currentMode]] + 25
-        notify(modes[currentMode] .. " Increased", "New value: " .. library.flags[modes[currentMode]])
-    end
-
-    if input.KeyCode == Enum.KeyCode.Minus and uis:IsKeyDown(Enum.KeyCode.RightControl) then
-        -- Decrease the value of the current mode
-        library.flags[modes[currentMode]] = library.flags[modes[currentMode]] - 25
-        notify(modes[currentMode] .. " Decreased", "New value: " .. library.flags[modes[currentMode]])
-    end
-end
-
--- Connect events
-uis.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end -- Ignore game processed inputs (such as pressing space while typing)
-    
-    handleKeyPress(input)
-    toggleFallDamage(input)
-end)
-
-game:GetService("RunService").Heartbeat:Connect(updateFlying)
-
--- Notify function for displaying notifications
-function notify(title, text)
-    game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = title,
-        Text = text,
-        Duration = 2
-    })
-end
-
-------------SPECTATE------------
-
-local plr = game.Players.LocalPlayer
-local uis = game:GetService("UserInputService")
+-- services
 local players = game:GetService("Players")
-local isSpectating = false
-
-function spectatePlayer(player)
-    if isSpectating then
-        if plr.Character then
-            isSpectating = false
-            workspace.CurrentCamera.CameraSubject = plr.Character
-        end
-        return
-    end
-
-    isSpectating = true
-    if player.Character then
-        workspace.CurrentCamera.CameraSubject = player.Character
-    end
-end
-
-function blackballs(label)
-    local player
-    for _, v in pairs(players:GetPlayers()) do
-        if v.Character ~= nil and (string.lower(v.Character.Name) == string.lower(string.gsub(tostring(label.Text), "[^%w%s_]+", ""))) then
-            player = v
-            break
-        end
-    end
-    if player then
-        task.spawn(spectatePlayer, player)
-
-        if isSpectating then
-            label.TextColor3 = Color3.new(1, 0, 0) -- Red color for spectating
-            for _, v in pairs(label.Parent:GetChildren()) do
-                if v == label then continue end
-                v.TextColor3 = Color3.new(1, 1, 1) -- White color for others
-            end
-        else
-            for _, v in pairs(label.Parent:GetChildren()) do
-                v.TextColor3 = Color3.new(1, 1, 1)
-            end
-        end
-    end
-end
-
-local s, e = pcall(function()
-    uis.InputBegan:Connect(function(input, gpe)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.MouseButton2 then
-            local objects = plr.PlayerGui:GetGuiObjectsAtPosition(input.Position.X, input.Position.Y)
-            local label = objects[1]
-
-            if label and label.Name == "PlayerLabel" then
-                blackballs(label)
-            end
-        end
-    end)
-end)
-
-if not s then
-    warn(e)
-end
-
-------HEALTH DISPLAY-------
-
-
-
--- Services
-local players = game:GetService("Players")
-
--- Function to enable health display for a character
-local function enableHealthDisplay(character)
-    task.wait(1) -- Wait to ensure the character is fully loaded
-    local humanoid = character:FindFirstChildOfClass("Humanoid")
-    if humanoid then
-        humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.Viewer
-        humanoid.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOn
-        humanoid.HealthDisplayDistance = 60 -- Health display visible up to 60 studs
-    end
-end
-
--- Function to handle a new player's character
-local function onCharacterAdded(character)
-    enableHealthDisplay(character)
-end
-
--- Function to handle a new player joining
-local function onPlayerAdded(player)
-    if player.Character then
-        onCharacterAdded(player.Character)
-    end
-    player.CharacterAdded:Connect(onCharacterAdded)
-end
-
--- Main
-for _, player in ipairs(players:GetPlayers()) do
-    onPlayerAdded(player)
-end
-
-players.PlayerAdded:Connect(onPlayerAdded)
-
-
-------CHAT VISIBILITY------
-
-
--- Function to apply the changes to ChatChannelParentFrame and ChatBarParentFrame
-local function applyChatSettings()
-    local chatFrame = game.Players.LocalPlayer.PlayerGui.Chat.Frame
-
-    -- Make sure ChatChannelParentFrame is accessible
-    local chatChannelParentFrame = chatFrame:WaitForChild("ChatChannelParentFrame")
-    local chatBarParentFrame = chatFrame:WaitForChild("ChatBarParentFrame")
-
-    -- Set the Visible property of ChatChannelParentFrame to true
-    chatChannelParentFrame.Visible = true
-
-    -- Change the position of ChatBarParentFrame
-    chatBarParentFrame.Position = UDim2.new(0, 0, 1, -45)
-end
-
--- Apply settings when the player respawns
-game.Players.LocalPlayer.CharacterAdded:Connect(function()
-    -- Wait for the character to load and then apply the settings
-    applyChatSettings()
-end)
-
--- Initially apply the settings if the player is already in the game
-if game.Players.LocalPlayer.Character then
-    applyChatSettings()
-end
-
-
-------TRINKET PICKUP--------
-
--- Services
-local player = game.Players.LocalPlayer
-local userInputService = game:GetService("UserInputService")
+local uis = game:GetService("UserInputService")
 local runService = game:GetService("RunService")
 local starterGui = game:GetService("StarterGui")
 local workspace = game:GetService("Workspace")
 
--- Variables
-local trinketPickupEnabled = false -- Toggles the Trinket Pickup feature
-local debounce = false -- Prevents constant execution for performance
-local scanInterval = 0.5 -- Time interval (in seconds) between scans
+local plr = players.LocalPlayer
+local char = plr.Character or plr.CharacterAdded:Wait()
+local hrp = char:WaitForChild("HumanoidRootPart")
+local hum = char:WaitForChild("Humanoid")
 
--- Function to display notification
-local function notify(title, text, duration)
-    starterGui:SetCore("SendNotification", {
-        Title = title,
-        Text = text,
-        Duration = duration or 3, -- Default to 3 seconds
-    })
+-- flight settings
+local FlyingSpeed = {
+	flags = {
+		FlyUpSpeed = 150,
+		FallSpeed = 80,
+		FlySpeed = 150,
+	}
+}
+
+local flying = false
+local velocity = Vector3.new(0, 0, 0)
+local currentMode = 1
+local modes = {"FlyUpSpeed", "FallSpeed", "FlySpeed"}
+
+local function notify(title, text)
+	starterGui:SetCore("SendNotification", {
+		Title = title,
+		Text = text,
+		Duration = 2
+	})
 end
 
--- Function to click nearby trinkets
-local function clickNearbyTrinkets()
-    if not trinketPickupEnabled or debounce then return end
-    debounce = true
+local function updateFlying()
+	if flying then
+		if uis:IsKeyDown(Enum.KeyCode.Space) and not uis:GetFocusedTextBox() then
+			velocity = Vector3.new(0, FlyingSpeed.flags.FlyUpSpeed, 0)
+		else
+			velocity = Vector3.new(0, -FlyingSpeed.flags.FallSpeed, 0)
+		end
 
-    local character = player.Character or player.CharacterAdded:Wait()
-    local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+		if hum.MoveDirection.Magnitude > 0 then
+			velocity += hum.MoveDirection.Unit * FlyingSpeed.flags.FlySpeed
+		end
 
-    for _, trinket in ipairs(workspace.Trinkets:GetChildren()) do
-        local clickDetector = trinket:FindFirstChildOfClass("ClickDetector")
-
-        -- Check if the ClickDetector is in "ClickPart" if not found directly
-        if not clickDetector then
-            local clickPart = trinket:FindFirstChild("ClickPart")
-            if clickPart then
-                clickDetector = clickPart:FindFirstChildOfClass("ClickDetector")
-            end
-        end
-
-        -- Click if within range
-        if clickDetector then
-            local partPosition = trinket.Position or (trinket:FindFirstChild("ClickPart") and trinket.ClickPart.Position)
-            if partPosition then
-                local distance = (humanoidRootPart.Position - partPosition).Magnitude
-                if distance <= 16 then
-                    fireclickdetector(clickDetector)
-                end
-            end
-        end
-    end
-
-    -- Reset debounce after scan interval
-    task.wait(scanInterval)
-    debounce = false
+		hrp.Velocity = velocity
+	end
 end
 
--- Toggle function
-userInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
+local function toggleFly(input)
+	if input.KeyCode == Enum.KeyCode.Z then
+		flying = not flying
+		hrp.Velocity = Vector3.new(0, 0, 0)
+		local status = flying and "enabled" or "disabled"
+		notify("flight", "flight has been " .. status .. ".")
+	end
+end
 
-    if input.KeyCode == Enum.KeyCode.B and userInputService:IsKeyDown(Enum.KeyCode.RightControl) then
-        trinketPickupEnabled = not trinketPickupEnabled
+local function resetFlightOnRespawn()
+	plr.CharacterAdded:Connect(function(character)
+		hrp = character:WaitForChild("HumanoidRootPart")
+		hum = character:WaitForChild("Humanoid")
+		flying = false
+		velocity = Vector3.new(0, 0, 0)
+		hrp.Velocity = Vector3.new(0, 0, 0)
+		notify("flight", "flight has been reset.")
+	end)
+end
 
-        -- Notify user about the status
-        local status = trinketPickupEnabled and "enabled" or "disabled"
-        notify("Trinket Pickup", "Trinket Pickup is now " .. status .. ".", 3)
-    end
+local function toggleFallDamage(input)
+	if input.KeyCode == Enum.KeyCode.N and uis:IsKeyDown(Enum.KeyCode.RightControl) then
+		local remotes = workspace.Live[plr.Name].CharacterHandler.Remotes
+		local fall1 = remotes:FindFirstChild("ApplyFallDamage")
+		local fall2 = remotes:FindFirstChild("ApplyFallDamag")
+
+		if fall1 then
+			fall1.Name = "ApplyFallDamag"
+			notify("fall damage", "fall damage disabled.")
+		elseif fall2 then
+			fall2.Name = "ApplyFallDamage"
+			notify("fall damage", "fall damage enabled.")
+		else
+			notify("error", "couldn't find fall damage remote.")
+		end
+	end
+end
+
+local function handleKeyPress(input)
+	if input.KeyCode == Enum.KeyCode.P and uis:IsKeyDown(Enum.KeyCode.RightControl) then
+		currentMode = currentMode % #modes + 1
+		local mode = modes[currentMode]
+		notify("editing " .. mode, "current value: " .. FlyingSpeed.flags[mode])
+	end
+
+	if input.KeyCode == Enum.KeyCode.Equals and uis:IsKeyDown(Enum.KeyCode.RightControl) then
+		local mode = modes[currentMode]
+		FlyingSpeed.flags[mode] += 25
+		notify(mode .. " increased", "new value: " .. FlyingSpeed.flags[mode])
+	end
+
+	if input.KeyCode == Enum.KeyCode.Minus and uis:IsKeyDown(Enum.KeyCode.RightControl) then
+		local mode = modes[currentMode]
+		FlyingSpeed.flags[mode] -= 25
+		notify(mode .. " decreased", "new value: " .. FlyingSpeed.flags[mode])
+	end
+end
+
+
+
+
+runService.Heartbeat:Connect(updateFlying)
+resetFlightOnRespawn()
+
+-- spectate
+local isSpectating = false
+local function spectatePlayer(player)
+	if isSpectating then
+		if plr.Character then
+			isSpectating = false
+			workspace.CurrentCamera.CameraSubject = plr.Character
+		end
+		return
+	end
+
+	isSpectating = true
+	if player.Character then
+		workspace.CurrentCamera.CameraSubject = player.Character
+	end
+end
+
+local function blackballs(label)
+	local player
+	for _, v in pairs(players:GetPlayers()) do
+		if v.Character and string.lower(v.Character.Name) == string.lower((tostring(label.Text):gsub("[^%w%s_]+", ""))) then
+			player = v
+			break
+		end
+	end
+
+	if player then
+		task.spawn(spectatePlayer, player)
+		if isSpectating then
+			label.TextColor3 = Color3.new(1, 0, 0)
+			for _, v in pairs(label.Parent:GetChildren()) do
+				if v ~= label then v.TextColor3 = Color3.new(1, 1, 1) end
+			end
+		else
+			for _, v in pairs(label.Parent:GetChildren()) do
+				v.TextColor3 = Color3.new(1, 1, 1)
+			end
+		end
+	end
+end
+
+pcall(function()
+	uis.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.MouseButton2 then
+			local objs = plr.PlayerGui:GetGuiObjectsAtPosition(input.Position.X, input.Position.Y)
+			local label = objs[1]
+			if label and label.Name == "PlayerLabel" then
+				blackballs(label)
+			end
+		end
+	end)
 end)
 
--- Main loop
-runService.Stepped:Connect(function()
-    if trinketPickupEnabled then
-        clickNearbyTrinkets()
-    end
-end)
-
-
-------illusionist-----
-
--- Services
-local players = game:GetService("Players")
-local starterGui = game:GetService("StarterGui")
-
--- Variables
-local observingPlayers = {} -- Tracks players actively observing
-
--- Helper function to send notifications
-local function notify(title, text, duration)
-    starterGui:SetCore("SendNotification", {
-        Title = title,
-        Text = text,
-        Duration = duration or 3,
-        Button1 = "OK",
-    })
+-- health display
+local function enableHealthDisplay(character)
+	task.wait(1)
+	local hum = character:FindFirstChildOfClass("Humanoid")
+	if hum then
+		hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.Viewer
+		hum.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOn
+		hum.HealthDisplayDistance = 60
+	end
 end
 
--- Function to check if a player equips the "Observe" tool
 local function onCharacterAdded(character)
-    local player = players:GetPlayerFromCharacter(character)
-    if not player then return end
-
-    -- Check when tools are equipped
-    character.ChildAdded:Connect(function(child)
-        if child:IsA("Tool") and child.Name == "Observe" then
-            if not observingPlayers[player] then
-                observingPlayers[player] = true
-                -- Notify when the player begins observing
-                notify("Illusionist Observe", player.Name .. " Equipped Observe tool", 3)
-            end
-        end
-    end)
-
-    -- Check when tools are unequipped
-    character.ChildRemoved:Connect(function(child)
-        if child:IsA("Tool") and child.Name == "Observe" then
-            if observingPlayers[player] then
-                observingPlayers[player] = false
-                -- Notify when the player stops observing
-                notify("Illusionist Observe", player.Name .. " Unequipped Observe tool", 3)
-            end
-        end
-    end)
+	enableHealthDisplay(character)
 end
 
--- Set up detection for existing players
-for _, player in ipairs(players:GetPlayers()) do
-    if player.Character then
-        onCharacterAdded(player.Character)
-    end
-    player.CharacterAdded:Connect(onCharacterAdded)
+local function onPlayerAdded(player)
+	if player.Character then onCharacterAdded(player.Character) end
+	player.CharacterAdded:Connect(onCharacterAdded)
 end
 
--- Set up detection for new players
-players.PlayerAdded:Connect(function(player)
-    player.CharacterAdded:Connect(onCharacterAdded)
+for _, v in ipairs(players:GetPlayers()) do
+	onPlayerAdded(v)
+end
+players.PlayerAdded:Connect(onPlayerAdded)
+
+-- chat visibility
+local textChatService = game:GetService("TextChatService")
+
+local function enableChat()
+	local config = textChatService:FindFirstChild("ChatWindowConfiguration")
+	if config then
+		config.Enabled = true
+	end
+end
+
+enableChat()
+
+plr.CharacterAdded:Connect(function()
+	task.wait(1)
+	enableChat()
 end)
 
--- Cleanup when players leave
-players.PlayerRemoving:Connect(function(player)
-    observingPlayers[player] = nil
+uis.InputBegan:Connect(function(input, gpe)
+	if gpe then return end
+
+	--superman
+	if input.KeyCode == Enum.KeyCode.Z then
+		toggleFly(input)
+		return
+	end
+
+	-- flight speed
+	handleKeyPress(input)
+
+	-- no fall
+	if input.KeyCode == Enum.KeyCode.N and uis:IsKeyDown(Enum.KeyCode.RightControl) then
+		toggleFallDamage(input)
+		return
+	end
 end)
+
+-- trinket pickup
+local trinketPickupEnabled = false
+local scanInterval = 1
+local nextScan = 0
+
+local function TrinketPickup()
+	local character = plr.Character or plr.CharacterAdded:Wait()
+	local root = character:WaitForChild("HumanoidRootPart")
+
+	local trinketsPicked = 0
+
+	for _, trinket in ipairs(workspace.Trinkets:GetChildren()) do
+		if trinketsPicked >= 2 then break end
+
+		local click = trinket:FindFirstChildOfClass("ClickDetector")
+		if not click then
+			local part = trinket:FindFirstChild("ClickPart")
+			if part then
+				click = part:FindFirstChildOfClass("ClickDetector")
+			end
+		end
+
+		if click and trinket.Position then
+			if (root.Position - trinket.Position).Magnitude <= 16 then
+				fireclickdetector(click)
+				trinketsPicked += 1
+			end
+		end
+	end
+
+	if trinketsPicked >= 2 then
+		scanInterval = 0.5
+	else
+		scanInterval = 1
+	end
+end
+
+
+uis.InputBegan:Connect(function(input, gpe)
+	if gpe then return end
+	if input.KeyCode == Enum.KeyCode.B and uis:IsKeyDown(Enum.KeyCode.RightControl) then
+		trinketPickupEnabled = not trinketPickupEnabled
+		local status = trinketPickupEnabled and "enabled" or "disabled"
+		notify("trinket pickup", "trinket pickup " .. status .. ".", 3)
+	end
+end)
+
+
+runService.Heartbeat:Connect(function(dt)
+	if not trinketPickupEnabled then return end
+	if tick() >= nextScan then
+		TrinketPickup()
+		nextScan = tick() + scanInterval
+	end
+end)
+
